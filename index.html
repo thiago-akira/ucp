@@ -524,7 +524,7 @@ function schemaFor(cat){
 async function callModel(prep,strict){
   const cat=currentCat;
   const ctx = prep.isUrl
-    ? ("A ENTRADA é um LINK de site oficial: "+prep.text+"\n"+(prep.hint?("Nome provável (extraído do link): "+prep.hint+".\n"):"")+(prep.country?("País: "+prep.country+".\n"):"")+"ACESSE e leia o conteúdo público desse site e de suas páginas principais usando busca/leitura na web. Reúna o máximo de informação real e observe SE o site expõe dados estruturados (JSON-LD, microdados, tabelas de especificação) ou apenas texto.")
+    ? ("A ENTRADA é um LINK de site oficial: "+prep.text+"\n"+(prep.hint?("Nome provável (extraído do link): "+prep.hint+".\n"):"")+(prep.country?("País: "+prep.country+".\n"):"")+"O conteúdo do site foi lido pelo servidor e está abaixo. Analise os dados disponíveis e observe SE há dados estruturados (JSON-LD, microdados, tabelas de especificação) ou apenas texto corrido.")
     : ("A ENTRADA é uma descrição:\n\"\"\""+prep.text+"\"\"\"");
   const prompt =
 (strict?"IMPORTANTE: responda SOMENTE com o objeto JSON, sem nenhuma palavra antes ou depois.\n\n":"")+
@@ -539,14 +539,14 @@ async function callModel(prep,strict){
 "Preencha os VALORES no ESQUEMA para chaves 'structured' e 'prose'; deixe null as 'missing'.\n\n"+
 "REGRAS: responda APENAS com JSON válido. Sem markdown, sem cercas, sem comentários. NUNCA responda com texto explicativo. Se faltar dado, retorne o JSON assim mesmo.\n\n"+
 "ESQUEMA:\n"+schemaFor(cat)+"\n\n"+ctx;
-  const res = await fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1600,messages:[{role:"user",content:prompt}],tools:[{type:"web_search_20250305",name:"web_search"}]})
+  const res = await fetch("/api/analyze",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({prompt, url: prep.isUrl ? prep.text : null})
   });
   if(!res.ok) throw new Error("status "+res.status);
   const data=await res.json();
-  const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
-  return extractJson(text);
+  return extractJson(data.text||'');
 }
 function extractJson(t){
   if(!t) return null;
