@@ -194,6 +194,15 @@
   .antesquote b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#a0573a;margin-bottom:5px;font-weight:700}
   .foot{font-size:12px;color:var(--muted);margin-top:24px;line-height:1.5;border-top:1px solid var(--border);padding-top:14px}
   .foot a{color:var(--petroleo)}
+  #stickyGauge{position:fixed;bottom:0;left:0;right:0;z-index:200;display:flex;align-items:center;gap:16px;background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -3px 18px rgba(20,60,60,.10);padding:10px 24px 12px;transform:translateY(100%);transition:transform .3s ease;pointer-events:none}
+  #stickyGauge.visible{transform:translateY(0);pointer-events:auto}
+  .sg-pct{font-family:var(--display);font-weight:700;font-size:22px;flex:none;min-width:52px;transition:color .3s}
+  .sg-track{flex:1;min-width:0}
+  .sg-bar{height:5px;border-radius:999px;background:var(--surface2);overflow:hidden;margin-bottom:5px}
+  .sg-bar>i{display:block;height:100%;border-radius:999px;transition:width .55s ease,background .3s}
+  .sg-lbl{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sg-legend{display:flex;gap:10px;flex:none}
+  @media(max-width:560px){.sg-legend{display:none}}
 </style>
 </head>
 <body>
@@ -314,6 +323,19 @@
 
   <div class="foot">
     Estrutura baseada no padrão aberto UCP, que está expandindo para hospedagem e alimentação. As especificações detalhadas ainda estão sendo publicadas, então este formato é uma representação fiel das convenções já documentadas em <a href="https://developers.google.com/hotels/ucp">developers.google.com/hotels/ucp</a>, <a href="https://ucp.dev/">ucp.dev</a> e <a href="https://hotelucp.com/">hotelucp.com</a>, combinadas com Schema.org. As quatro telas são uma simulação de como o item apareceria em um agente. A barra reflete o que uma IA consegue extrair do site de forma estruturada no momento da análise.
+  </div>
+</div>
+
+<div id="stickyGauge" aria-hidden="true">
+  <span class="sg-pct" id="sgPct">0%</span>
+  <div class="sg-track">
+    <div class="sg-bar"><i id="sgFill" style="width:0%"></i></div>
+    <div class="sg-lbl" id="sgLbl">estruturado para a IA ler</div>
+  </div>
+  <div class="sg-legend">
+    <span class="lg"><i class="d ok"></i>estruturado</span>
+    <span class="lg"><i class="d lo"></i>fora do formato</span>
+    <span class="lg"><i class="d mi"></i>falta</span>
   </div>
 </div>
 
@@ -777,10 +799,14 @@ function refresh(){
   let ok=0,loose=0,miss=0;
   F.forEach(f=>{const s=st[f.key]; if(s==='ok')ok++; else if(s==='loose')loose++; else miss++;});
   const total=F.length||1, pct=Math.round(ok/total*100);
-  $('#pct').textContent=pct+'%';
-  $('#fm').textContent=ok+' estruturados · '+loose+' fora do formato · '+miss+' faltando';
   const col=pct<50?'var(--coral)':(pct<80?'var(--amber)':'#46A982');
+  const fmTxt=ok+' estruturados · '+loose+' fora do formato · '+miss+' faltando';
+  $('#pct').textContent=pct+'%';
+  $('#fm').textContent=fmTxt;
   const bf=$('#barfill'); bf.style.background=col; bf.style.width=pct+'%';
+  $('#sgPct').textContent=pct+'%'; $('#sgPct').style.color=col;
+  $('#sgFill').style.background=col; $('#sgFill').style.width=pct+'%';
+  $('#sgLbl').textContent=fmTxt;
   $('#diag').innerHTML=diagnostic(pct,ok,loose,miss,total,STATE.cat);
   renderLoose();
   renderOrigin();
@@ -804,6 +830,17 @@ document.addEventListener('click',e=>{
 });
 
 function showNotice(msg){const n=$('#notice');if(!msg){n.style.display='none';return;}n.textContent=msg;n.style.display='block';}
+(function(){
+  const gaugeEl=document.querySelector('.gauge');
+  const stickyEl=document.getElementById('stickyGauge');
+  if(!gaugeEl||!stickyEl) return;
+  new IntersectionObserver(function(entries){
+    const out=!entries[0].isIntersecting;
+    stickyEl.classList.toggle('visible', out && STATE.o!==null);
+    stickyEl.setAttribute('aria-hidden', String(!(out && STATE.o!==null)));
+  },{threshold:0}).observe(gaugeEl);
+})();
+
 $('#go').addEventListener('click',async()=>{
   const input=$('#inp').value.trim();
   const err=$('#err'); err.style.display='none'; showNotice('');
