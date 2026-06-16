@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditor de presença para agentes de IA · UCP</title>
+<style>
+  :root{
+    --petroleo:#0E4D54; --petroleo-d:#0a3d43; --coral:#E8907B; --amber:#F2B583;
+    --bg:#F7F3EE; --surface:#FFFFFF; --surface2:#F2F0EA; --ink:#2A3434; --muted:#7C8480;
+    --border:#ECE7DF; --coral-tint:#FAEDE7; --teal-tint:#E8F1ED; --amber-tint:#FBF2E2; --butter:#FBF2DF;
+    --ok-bd:#9CD3B7; --ok-bg:#F0F8F3; --ok-tx:#2f8a5f;
+    --lo-bd:#E8B27A; --lo-bg:#FCF3E4; --lo-tx:#B5732A;
+    --radius:14px; --radius-sm:10px;
+    --shadow:0 1px 3px rgba(40,60,60,.05),0 1px 2px rgba(40,60,60,.04);
+    --display:"Trebuchet MS","Segoe UI",sans-serif;
+    --body:"Calibri","Segoe UI",sans-serif;
+    --mono:"SFMono-Regular","Consolas","Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 20px 64px}
+  .hero{background:var(--petroleo);color:#fff;border-radius:18px;padding:26px 30px;position:relative;overflow:hidden;display:flex;gap:26px;align-items:center}
+  .hero::after{content:"";position:absolute;right:-60px;top:-60px;width:180px;height:180px;background:var(--coral);opacity:.16;border-radius:50%}
+  .heroMain{flex:1;min-width:0;position:relative;z-index:1}
+  .heroMain h1{font-family:var(--display);font-weight:700;font-size:25px;margin:0 0 8px;letter-spacing:-.2px}
+  .heroMain p{margin:0;color:#DCE9E7;font-size:15px}
+  .heroMain .tag{margin-top:13px;font-family:var(--mono);font-size:11px;color:#A9C6C4}
+  .heroArt{flex:none;width:300px;position:relative;z-index:1;border-radius:16px;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.16)}
+  .heroArt svg{display:block;width:100%;height:auto}
+  @media(max-width:820px){.hero{display:block}.heroArt{display:none}}
+  .alert{display:flex;gap:11px;align-items:flex-start;background:var(--butter);border:1px solid #EBCF9A;color:#7a5a1e;border-radius:13px;padding:13px 16px;margin-top:16px;font-size:13.5px;line-height:1.5}
+  .alert svg{flex:none;width:18px;height:18px;margin-top:1px}
+  .alert b{color:#6a4e16}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-top:18px;box-shadow:var(--shadow)}
+  .seclbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px}
+  .catbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+  .cat{font-size:13.5px;padding:9px 16px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:var(--body);transition:.15s}
+  .cat:hover{border-color:var(--petroleo);color:var(--petroleo)}
+  .cat.on{background:var(--petroleo);color:#fff;border-color:var(--petroleo)}
+  label.fld{display:block;font-weight:700;font-family:var(--display);color:var(--petroleo);font-size:15px;margin-bottom:10px}
+  textarea{width:100%;min-height:74px;resize:vertical;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-family:var(--body);font-size:15px;color:var(--ink);background:var(--surface);outline:none}
+  textarea:focus{border-color:var(--petroleo);box-shadow:0 0 0 3px rgba(14,77,84,.10)}
+  .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+  .btn{font-family:var(--display);font-weight:700;font-size:15px;border:none;border-radius:var(--radius-sm);padding:12px 22px;cursor:pointer;transition:.15s}
+  .btn-go{background:var(--petroleo);color:#fff}
+  .btn-go:hover{background:var(--petroleo-d)}
+  .btn-go:disabled{opacity:.55;cursor:default}
+  .btn-ghost{background:transparent;color:var(--petroleo);border:1px solid var(--border);font-weight:400;font-family:var(--body)}
+  .btn-ghost:hover{border-color:var(--petroleo)}
+  .hint{font-size:13px;color:var(--muted);margin-top:10px}
+  .spin{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .err{background:var(--coral-tint);border:1px solid #EEC2B4;color:#8a3a23;border-radius:var(--radius-sm);padding:12px 14px;margin-top:14px;font-size:14.5px;display:none}
+  .notice{background:var(--amber-tint);border:1px solid var(--amber);color:#8a5a1f;border-radius:var(--radius-sm);padding:11px 14px;margin:0 0 16px;font-size:14px;line-height:1.5;display:none}
+  #results{display:none;margin-top:6px}
+  @media(prefers-reduced-motion:no-preference){#results.show{animation:up .45s ease both}}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .gauge{margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 22px;box-shadow:var(--shadow)}
+  .gauge .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .gauge .pct{font-family:var(--display);font-weight:700;font-size:23px}
+  .gauge .lbl{font-size:13.5px;color:var(--muted)}
+  .bar{height:9px;border-radius:999px;background:var(--surface2);margin-top:11px;overflow:hidden}
+  .bar > i{display:block;height:100%;border-radius:999px;transition:width .55s ease}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:13px}
+  .lg{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+  .lg .d{width:11px;height:11px;border-radius:3px;flex:none}
+  .lg .d.ok{background:var(--ok-bg);border:1.5px solid var(--ok-bd)}
+  .lg .d.lo{background:var(--lo-bg);border:1.5px solid var(--lo-bd)}
+  .lg .d.mi{background:#FFFCF7;border:1.5px dashed var(--lo-bd)}
+  .diag{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--coral);border-radius:var(--radius);padding:18px 22px;margin-top:16px;box-shadow:var(--shadow)}
+  .diag p{margin:0 0 11px;font-size:14.5px;line-height:1.62}
+  .diag p:last-child{margin-bottom:0}
+  .diag b{color:var(--petroleo)}
+  .diagrow{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:stretch;margin-top:16px}
+  .diagrow .diag{margin-top:0}
+  .rightcol{display:flex;flex-direction:column;gap:16px;min-height:0}
+  .rightcol .gauge{margin-top:0;flex:0 0 auto}
+  .origin{flex:1 1 auto;min-height:120px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+  .originhd{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px;display:flex;align-items:center}
+  .origintxt{flex:1;min-height:0;overflow:auto;font-size:13px;color:#6a5a52;line-height:1.5;background:var(--coral-tint);border-radius:8px;padding:11px 13px}
+  .help{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--muted);color:var(--muted);font-size:11px;font-weight:700;cursor:help;position:relative;margin-left:7px;flex:none;vertical-align:middle}
+  .help .tip{display:none;position:absolute;z-index:30;top:150%;right:0;width:230px;background:var(--ink);color:#fff;font-size:12px;font-weight:400;line-height:1.5;padding:10px 12px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.2);text-transform:none;letter-spacing:0;pointer-events:none}
+  .help:hover .tip,.help:focus .tip,.help.show .tip{display:block}
+  @media(max-width:760px){.diagrow{grid-template-columns:1fr;align-items:stretch}.origin{min-height:auto}}
+  .loosewrap{margin:2px 0 18px}
+  .loosehd{font-size:11.5px;font-weight:700;color:var(--lo-tx);text-transform:uppercase;letter-spacing:.3px;margin-bottom:9px}
+  .dchips{display:flex;flex-wrap:wrap;gap:8px}
+  .dchip{font-family:var(--body);font-size:13px;padding:7px 13px;border-radius:999px;border:1px solid var(--lo-bd);background:var(--lo-bg);color:var(--lo-tx);cursor:pointer;transition:.15s;line-height:1.2}
+  .dchip:hover{background:#F7E4C8}
+  .dchip.used{opacity:.4;cursor:default;border-style:dashed;background:#fff}
+  .seclbl2{font-family:var(--display);font-weight:700;color:var(--petroleo);font-size:16px;margin:26px 0 14px}
+  .editnote{font-size:13.5px;color:var(--muted);margin:0 0 16px;line-height:1.55}
+  .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 15px}
+  @media(max-width:560px){.formgrid{grid-template-columns:1fr}}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
+  .field input,.field select{width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 11px;font-family:var(--body);font-size:14px;color:var(--ink);background:#fff;outline:none}
+  .field input:focus,.field select:focus{border-color:var(--petroleo);box-shadow:0 0 0 3px rgba(14,77,84,.10)}
+  .field.s-ok input,.field.s-ok select{border-color:var(--ok-bd);background:var(--ok-bg)}
+  .field.s-ok label{color:var(--ok-tx)}
+  .field.s-ok label::after{content:" · estruturado";color:var(--ok-tx);font-weight:700}
+  .field.s-loose input,.field.s-loose select{border-color:var(--lo-bd);background:var(--lo-bg)}
+  .field.s-loose label{color:var(--lo-tx)}
+  .field.s-loose label::after{content:" · fora do formato";color:var(--lo-tx);font-weight:700}
+  .field.s-missing input,.field.s-missing select{border-color:var(--lo-bd);background:#FFFCF7;border-style:dashed}
+  .field.s-missing label{color:var(--lo-tx)}
+  .field.s-missing label::after{content:" · falta";color:#C77B2C;font-weight:700}
+  .field input::placeholder{color:#B9C0BC}
+  .field.s-missing input::placeholder{color:#C9A36E;font-style:italic}
+  .tabs4{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+  .tabs4 .tab{font-family:var(--display);font-size:13px;font-weight:700;padding:9px 16px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:.15s}
+  .tabs4 .tab:hover{border-color:var(--petroleo);color:var(--petroleo)}
+  .tabs4 .tab.on{background:var(--petroleo);color:#fff;border-color:var(--petroleo)}
+  .preview{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+  @media(min-width:830px){.preview{grid-template-columns:332px 1fr}}
+  .phonewrap{display:flex;justify-content:center}
+  .phone{width:300px;max-width:100%}
+  .pscreen{display:flex;flex-direction:column;height:600px;background:#fff;border:1px solid var(--border);border-radius:30px;overflow:hidden;box-shadow:0 12px 40px rgba(20,60,60,.10)}
+  .ptop{flex:none;background:#fff;border-bottom:1px solid #F2EEE6}
+  .pbody{flex:1;overflow-y:auto}
+  .pbody::-webkit-scrollbar{width:7px}
+  .pbody::-webkit-scrollbar-thumb{background:#DAD5CC;border-radius:4px}
+  .pbody::-webkit-scrollbar-track{background:transparent}
+  .pfoot{flex:none;background:#fff;border-top:1px solid #F2EEE6;padding:12px 14px 16px}
+  .pbar{display:flex;justify-content:space-between;align-items:center;padding:10px 18px 6px;font-size:12.5px;color:var(--ink);font-weight:700}
+  .pbar .pr{display:flex;gap:5px;align-items:center}
+  .pbar .sig,.pbar .wifi{width:13px;height:9px;border-radius:2px;background:var(--ink)}
+  .pbar .wifi{width:11px}
+  .pbar .batt{width:18px;height:9px;border-radius:3px;border:1.5px solid var(--ink)}
+  .phead{display:flex;justify-content:space-between;align-items:center;padding:6px 16px 12px}
+  .pbrand{font-family:var(--display);font-weight:700;font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}
+  .px{width:25px;height:25px;border-radius:50%;background:#F1EEE7;color:#9aa19c;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .pcheck{width:25px;height:25px;border-radius:50%;background:#46A982;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .pcheck svg{width:15px;height:15px}
+  .ptitle{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink);padding:12px 18px}
+  .pbanner{line-height:0}.pbanner svg{width:100%;height:96px;display:block}
+  .ppad{padding:14px 16px 10px}
+  .pprodname{font-family:var(--display);font-weight:700;font-size:17px;color:var(--ink)}
+  .pprodmeta{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .pprodprice{display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:700;font-size:17px;color:var(--ink)}
+  .pchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .pchip{font-size:11.5px;padding:5px 10px;border-radius:999px;background:var(--teal-tint);color:var(--petroleo)}
+  .psub{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:16px 16px 6px}
+  .poffrow{display:flex;justify-content:space-between;gap:10px;margin:0 16px 8px;padding:10px 12px;border-radius:12px;background:var(--surface2);font-size:13px}
+  .poffttl{font-weight:700;color:var(--petroleo)}
+  .poffdet{color:var(--muted);text-align:right}
+  .pcard{margin:0 14px 11px;border-radius:16px;background:var(--surface2);overflow:hidden}
+  .poff{padding:12px 14px 14px}
+  .poffname{font-weight:700;font-size:14px;color:var(--petroleo)}
+  .poffprice{display:flex;align-items:center;gap:8px;margin-top:4px;font-weight:700;font-size:15px;color:var(--ink)}
+  .ptag{font-size:9.5px;font-weight:700;color:#2f7d55;background:#DBEFE3;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.2px}
+  .poffdetail{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4}
+  .prow{display:flex;align-items:center;gap:11px;margin:0 14px 10px;padding:11px 13px;border-radius:14px;background:var(--surface2)}
+  .prow .pic{width:31px;height:31px;border-radius:9px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--border)}
+  .prow .pic svg{width:16px;height:16px}
+  .prow .pt{font-size:12.5px;line-height:1.35;overflow:hidden}
+  .prow .pt b{display:block;color:var(--ink);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prow .pt span{color:var(--muted)}
+  .ptotal{display:flex;justify-content:space-between;align-items:center;padding:8px 18px 6px;font-weight:700;font-size:16px;color:var(--ink)}
+  .pcta{background:var(--petroleo);color:#fff;border:none;border-radius:999px;padding:14px;font-family:var(--display);font-weight:700;font-size:14.5px;cursor:default;width:100%}
+  .pfine{font-size:10px;color:#9aa3a0;line-height:1.5;padding-top:10px}
+  .pid{padding:6px 18px 16px;text-align:center}
+  .pidicon{width:54px;height:54px;border-radius:50%;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;margin:10px auto 14px}
+  .pidicon svg{width:26px;height:26px}
+  .pidttl{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
+  .pidsub{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.45}
+  .pidmail{display:inline-flex;align-items:center;gap:8px;margin:14px auto;padding:7px 14px;border:1px solid var(--border);border-radius:999px;font-size:13px;color:var(--ink)}
+  .pidmail svg{width:18px;height:18px}
+  .pidbox{text-align:left;background:var(--surface2);border-radius:14px;padding:12px 14px;margin-top:6px}
+  .pidboxh{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px}
+  .pidrow{font-size:13px;color:var(--ink);padding:8px 0;border-top:1px solid #E6E2DB}
+  .pidrow:first-of-type{border-top:none}
+  .pidfine{font-size:11px;color:#9aa3a0;margin-top:14px;line-height:1.5}
+  .pordhead{text-align:center;padding:14px 18px 6px}
+  .pordcheck{width:46px;height:46px;border-radius:50%;background:#46A982;display:flex;align-items:center;justify-content:center;margin:6px auto 12px}
+  .pordcheck svg{width:24px;height:24px}
+  .pordttl{font-family:var(--display);font-weight:700;font-size:18px;color:var(--ink)}
+  .pordid{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .pordline{display:flex;justify-content:space-between;margin:0 16px;padding:9px 0;border-top:1px solid #EFEBE3;font-weight:700;font-size:14px;color:var(--ink)}
+  .pordline.sub2{font-weight:400;color:var(--muted);font-size:13px}
+  .pordnote{margin:14px 16px 6px;background:var(--teal-tint);border-radius:12px;padding:11px 13px;font-size:12px;color:var(--petroleo);line-height:1.45}
+  .codewrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);background:#fff}
+  .codehd{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)}
+  .codehd span{font-size:12px;color:var(--muted);font-weight:600}
+  .copy{font-size:12px;font-family:var(--body);border:1px solid var(--border);background:#fff;color:var(--petroleo);border-radius:7px;padding:5px 12px;cursor:pointer}
+  .copy:hover{border-color:var(--petroleo)}
+  pre{margin:0;padding:15px 16px;background:#FBFAF6;color:#3a4a48;font-family:var(--mono);font-size:12px;line-height:1.55;overflow:auto;max-height:560px;white-space:pre}
+  .detail{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;margin-top:18px;box-shadow:var(--shadow)}
+  .sub{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px}
+  .chipset{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-size:12.5px;padding:6px 12px;border-radius:999px;font-family:var(--body)}
+  .chip.k{background:var(--teal-tint);color:var(--petroleo);border:1px solid #CFE3DB}
+  .antesquote{margin-top:18px;border-left:3px solid var(--coral);background:var(--coral-tint);border-radius:8px;padding:11px 15px;font-size:13px;color:#6a4a40;line-height:1.5}
+  .antesquote b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#a0573a;margin-bottom:5px;font-weight:700}
+  .foot{font-size:12px;color:var(--muted);margin-top:24px;line-height:1.5;border-top:1px solid var(--border);padding-top:14px}
+  .foot a{color:var(--petroleo)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="heroMain">
+      <h1>Auditor de presença para agentes de IA</h1>
+      <p>Cole o link do site oficial e veja como o seu negócio apareceria dentro de um agente de IA, em quatro telas, e o quanto dos seus dados já está estruturado para a máquina ler.</p>
+      <div class="tag">Padrão UCP · developers.google.com/hotels/ucp · ucp.dev</div>
+    </div>
+    <div class="heroArt">
+      <svg viewBox="0 0 300 214" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Site em texto solto sendo estruturado para um agente de IA">
+        <rect width="300" height="214" rx="16" fill="#FBF7F1"/>
+        <rect x="18" y="56" width="92" height="104" rx="9" fill="#FFFFFF" stroke="#E7E0D6"/>
+        <circle cx="34" cy="74" r="7" fill="#CFE2DB"/>
+        <rect x="46" y="71" width="50" height="7" rx="3.5" fill="#D8D2C8"/>
+        <rect x="30" y="92" width="66" height="6" rx="3" fill="#E4DED4"/>
+        <rect x="30" y="104" width="58" height="6" rx="3" fill="#E4DED4"/>
+        <rect x="30" y="116" width="64" height="6" rx="3" fill="#E4DED4"/>
+        <rect x="30" y="128" width="40" height="6" rx="3" fill="#E4DED4"/>
+        <rect x="30" y="140" width="52" height="6" rx="3" fill="#E4DED4"/>
+        <path d="M120 108 H156" stroke="#E8907B" stroke-width="3" stroke-linecap="round"/>
+        <path d="M150 101 L158 108 L150 115" fill="none" stroke="#E8907B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="135" cy="86" r="9" fill="none" stroke="#0E4D54" stroke-width="2.4"/>
+        <path d="M141 92 L147 98" stroke="#0E4D54" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M170 126 l2.6 6.2 6.2 2.6 -6.2 2.6 -2.6 6.2 -2.6 -6.2 -6.2 -2.6 6.2 -2.6 z" fill="#F2B583"/>
+        <rect x="182" y="30" width="100" height="156" rx="16" fill="#FFFFFF" stroke="#0E4D54" stroke-width="2"/>
+        <rect x="194" y="42" width="76" height="26" rx="7" fill="#E8F1ED"/>
+        <circle cx="206" cy="55" r="6" fill="#7FC6AC"/>
+        <rect x="216" y="50" width="40" height="5" rx="2.5" fill="#9BCBC0"/>
+        <rect x="216" y="59" width="28" height="4" rx="2" fill="#BFD9D2"/>
+        <rect x="194" y="78" width="50" height="8" rx="4" fill="#0E4D54"/>
+        <rect x="194" y="93" width="36" height="13" rx="6.5" fill="#FBE3DC"/>
+        <rect x="200" y="96" width="24" height="6" rx="3" fill="#E8907B"/>
+        <circle cx="200" cy="121" r="6" fill="#46A982"/><path d="M197 121 l2 2 4 -4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="212" y="118" width="54" height="6" rx="3" fill="#E4DED4"/>
+        <circle cx="200" cy="139" r="6" fill="#46A982"/><path d="M197 139 l2 2 4 -4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="212" y="136" width="46" height="6" rx="3" fill="#E4DED4"/>
+        <rect x="194" y="159" width="76" height="16" rx="8" fill="#0E4D54"/>
+        <rect x="148" y="38" width="30" height="20" rx="6" fill="#0E4D54"/>
+        <text x="163" y="52" fill="#fff" font-size="12" font-family="monospace" font-weight="bold" text-anchor="middle">{ }</text>
+        <rect x="156" y="150" width="40" height="20" rx="6" fill="#E8907B"/>
+        <text x="176" y="164" fill="#fff" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">&lt;/&gt;</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="alert">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="#B5862E" stroke-width="2"/><path d="M12 11v5" stroke="#B5862E" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.5" r="1.2" fill="#B5862E"/></svg>
+    <span><b>Atenção:</b> a estrutura UCP ainda não é oficial. As especificações estão em desenvolvimento pelo Google e podem mudar. Use esta ferramenta como referência e simulação, não como especificação final.</span>
+  </div>
+
+  <div class="card">
+    <p class="seclbl">1. Categoria</p>
+    <div class="catbar" id="catbar">
+      <button class="cat on" data-c="hospedagem">Hospedagem</button>
+      <button class="cat" data-c="atrativo">Atrativo turístico</button>
+      <button class="cat" data-c="experiencia">Experiência / passeio</button>
+      <button class="cat" data-c="ingresso">Ingresso</button>
+      <button class="cat" data-c="restaurante">Restaurante</button>
+    </div>
+    <label class="fld" for="inp" id="inpLabel">Link do site oficial da hospedagem</label>
+    <textarea id="inp" placeholder="Cole o link do site oficial (ou, se preferir, a descrição completa)."></textarea>
+    <div class="row">
+      <button class="btn btn-go" id="go">Analisar site</button>
+      <button class="btn btn-ghost" id="ex">Usar exemplo</button>
+    </div>
+    <div class="hint" id="hint">Dica: o link do site oficial gera a análise mais fiel. Sites próprios costumam permitir leitura; portais como o Booking bloqueiam.</div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="results">
+    <div class="notice" id="notice"></div>
+    <div class="diagrow">
+      <div class="diag" id="diag"></div>
+      <div class="rightcol">
+        <div class="origin" id="originBox"></div>
+        <div class="gauge">
+          <div class="top">
+            <div><span class="pct" id="pct">0%</span> <span class="lbl">estruturado para a IA ler</span><span class="help" tabindex="0">?<span class="tip">Mede quanto dos dados críticos do negócio está em formato que uma IA lê com segurança (estruturado), e não se a informação existe. Verde conta; fora do formato e falta não contam até serem estruturados.</span></span></div>
+          </div>
+          <div class="bar"><i id="barfill" style="width:0%"></i></div>
+          <div class="lbl" id="fm" style="margin-top:10px"></div>
+          <div class="legend">
+            <span class="lg"><i class="d ok"></i>estruturado · conta</span>
+            <span class="lg"><i class="d lo"></i>fora do formato</span>
+            <span class="lg"><i class="d mi"></i>falta</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="seclbl2">Complete e estruture os dados</p>
+    <div class="card">
+      <p class="editnote">Os atributos que estão no site, mas <b>fora do formato</b>, aparecem como etiquetas abaixo. Clique em cada um para levá-lo ao campo certo e estruturá-lo: a etiqueta fica opaca e a barra sobe. Os campos <b>em branco</b> são o que faltou; o texto cinza dentro deles é um exemplo do que preencher, e some quando você começa a digitar.</p>
+      <div class="loosewrap" id="looseWrap"></div>
+      <div class="formgrid" id="editBody"></div>
+    </div>
+
+    <p class="seclbl2">Como apareceria dentro de um agente de IA</p>
+    <div class="tabs4" id="tabs4">
+      <button class="tab on" data-t="produto">Produto</button>
+      <button class="tab" data-t="checkout">Checkout</button>
+      <button class="tab" data-t="identificacao">Identificação</button>
+      <button class="tab" data-t="pedido">Pedido</button>
+    </div>
+    <div class="preview">
+      <div class="phonewrap"><div id="phoneWrap"></div></div>
+      <div class="codewrap">
+        <div class="codehd"><span id="codeLbl"></span><button class="copy" id="copyBtn">Copiar</button></div>
+        <pre id="code"></pre>
+      </div>
+    </div>
+
+    <div class="detail" id="detailBody"></div>
+  </div>
+
+  <div class="foot">
+    Estrutura baseada no padrão aberto UCP, que está expandindo para hospedagem e alimentação. As especificações detalhadas ainda estão sendo publicadas, então este formato é uma representação fiel das convenções já documentadas em <a href="https://developers.google.com/hotels/ucp">developers.google.com/hotels/ucp</a>, <a href="https://ucp.dev/">ucp.dev</a> e <a href="https://hotelucp.com/">hotelucp.com</a>, combinadas com Schema.org. As quatro telas são uma simulação de como o item apareceria em um agente. A barra reflete o que uma IA consegue extrair do site de forma estruturada no momento da análise.
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+let currentCat="hospedagem";
+const STATE={o:null,fields:[],cat:"hospedagem",screen:"produto",status:{}};
+
+const CATS={
+  hospedagem:{label:"Hospedagem",ld:"Hotel",vertical:"lodging",
+    inLabel:"Link do site oficial da hospedagem",ph:"Cole o link do site oficial do hotel ou pousada (ou a descrição completa).",
+    dataShape:'{"rooms":[{"name":string,"max_occupancy":number|null,"bed":string|null,"price":number|null}],"cancellation":string|null}',
+    txType:"lodging_stay",
+    ex:"Pousada Águas de Bonito, em Bonito, MS. Suíte Luxo com piscina privativa, café da manhã regional incluso no estilo buffet e vista para a natureza. Wi-Fi gratuito, ar-condicionado e estacionamento gratuito. Acomoda até 2 adultos, cama king, 32 m². Diárias a partir de R$ 890. Não reembolsável após 48 horas. Aceita cartão de crédito e Pix.",
+    q:{act:"comparar, validar e fechar uma reserva direta",ask:"\u201Chotel em Bonito com piscina privativa e café incluso até R$ 900\u201D",noun:"hospedagem"}},
+  atrativo:{label:"Atrativo turístico",ld:"TouristAttraction",vertical:"attraction",
+    inLabel:"Link do site oficial do atrativo",ph:"Cole o link do site oficial do atrativo turístico (ou a descrição).",
+    dataShape:'{"opening_hours":string|null,"ticket":{"required":boolean|null,"price":number|null},"duration":string|null,"accessible":boolean|null}',
+    txType:"attraction_entry",
+    ex:"Gruta do Lago Azul, em Bonito, MS. Atrativo natural com visita guiada de cerca de 2 horas. Ingresso a partir de R$ 60. Aberto das 7h às 14h. Necessário agendamento. Acesso por trilha com escadas.",
+    q:{act:"exibir e vender a entrada ou ingresso",ask:"\u201Co que visitar em Bonito com ingresso comprável online\u201D",noun:"atrativo"}},
+  experiencia:{label:"Experiência / passeio",ld:"TouristTrip",vertical:"experience",
+    inLabel:"Link do site oficial da experiência",ph:"Cole o link do site oficial do passeio ou experiência (ou a descrição).",
+    dataShape:'{"duration":string|null,"languages":string[],"includes":string[],"meeting_point":string|null,"cancellation":string|null}',
+    txType:"experience_booking",
+    ex:"Flutuação no Rio da Prata, em Jardim/Bonito, MS. Passeio de cerca de 3 horas, inclui equipamento (máscara e colete), guia e trilha. Grupos de até 8 pessoas. A partir de R$ 290. Cancelamento gratuito até 48h antes. Idiomas: português e inglês.",
+    q:{act:"montar, reservar e cobrar o passeio",ask:"\u201Cpasseios de flutuação em Bonito para amanhã, com reserva\u201D",noun:"passeio"}},
+  ingresso:{label:"Ingresso",ld:"Event",vertical:"ticketing",
+    inLabel:"Link do site oficial do evento",ph:"Cole o link do site oficial do evento ou ingresso (ou a descrição).",
+    dataShape:'{"event_name":string|null,"venue":string|null,"start_date":string|null,"tiers":[{"name":string,"price":number|null}]}',
+    txType:"event_ticket",
+    ex:"Festival de Inverno de Bonito 2026, no Balneário Municipal. Show nacional no dia 30/06/2026 às 21h. Ingressos: Pista R$ 120 e Camarote R$ 250. Classificação 16 anos.",
+    q:{act:"vender o ingresso na hora",ask:"\u201Cingressos para esse fim de semana perto de mim\u201D",noun:"evento"}},
+  restaurante:{label:"Restaurante",ld:"Restaurant",vertical:"food",
+    inLabel:"Link do site oficial do restaurante",ph:"Cole o link do site oficial do restaurante (ou a descrição).",
+    dataShape:'{"cuisine":string[],"price_range":string|null,"opening_hours":string|null,"accepts_reservations":boolean|null,"delivery":boolean|null,"menu":[{"name":string,"price":number|null}]}',
+    txType:"table_reservation",
+    ex:"Restaurante Casa do João, em Bonito, MS. Cozinha regional pantaneira. Pratos como pacu assado (R$ 95) e traíra sem espinha (R$ 88). Aberto das 11h às 23h. Aceita reservas. Faixa de preço média.",
+    q:{act:"reservar mesa ou montar um pedido",ask:"\u201Crestaurante de comida regional em Bonito que aceita reserva\u201D",noun:"restaurante"}}
+};
+
+const MOCK={
+  hospedagem:{prodCta:"Ver disponibilidade",coTitle:"Revise sua reserva",coCta:"Reservar e pagar",ordTitle:"Reserva confirmada"},
+  atrativo:{prodCta:"Comprar ingresso",coTitle:"Revise seu ingresso",coCta:"Comprar ingresso",ordTitle:"Ingresso confirmado"},
+  experiencia:{prodCta:"Reservar passeio",coTitle:"Revise seu passeio",coCta:"Reservar e pagar",ordTitle:"Passeio confirmado"},
+  ingresso:{prodCta:"Comprar ingresso",coTitle:"Revise seu ingresso",coCta:"Comprar ingresso",ordTitle:"Ingresso confirmado"},
+  restaurante:{prodCta:"Reservar mesa",coTitle:"Confirme sua reserva",coCta:"Reservar mesa",ordTitle:"Reserva confirmada"}
+};
+
+// ---- single source of truth for editable fields (label + example placeholder + bind) ----
+function numOrNull(v){v=String(v).trim().replace(/\./g,'').replace(',','.');if(v==='')return null;const n=Number(v);return isNaN(n)?null:n;}
+function csv(v){return String(v).split(',').map(s=>s.trim()).filter(Boolean);}
+const COMMON=[
+  {key:'name',label:'Nome',type:'text',ex:'Pousada Águas de Bonito',bind:o=>({get:()=>o.name,set:v=>o.name=v||null})},
+  {key:'locality',label:'Cidade',type:'text',ex:'Bonito',bind:o=>({get:()=>o.location.locality,set:v=>o.location.locality=v||null})},
+  {key:'region',label:'Estado / UF',type:'text',ex:'MS',bind:o=>({get:()=>o.location.region,set:v=>o.location.region=v||null})},
+  {key:'lat',label:'Latitude',type:'num',ex:'-21,1311',bind:o=>({get:()=>o.geo.lat,set:v=>o.geo.lat=numOrNull(v)})},
+  {key:'lng',label:'Longitude',type:'num',ex:'-56,4822',bind:o=>({get:()=>o.geo.lng,set:v=>o.geo.lng=numOrNull(v)})},
+  {key:'price',label:'Preço (a partir de)',type:'num',ex:'890',bind:o=>({get:()=>o.price.from,set:v=>o.price.from=numOrNull(v)})},
+  {key:'pay',label:'Pagamentos',type:'csv',ex:'Pix, cartão de crédito',bind:o=>({get:()=>(o.capability.payment_tokens||[]).join(', '),set:v=>o.capability.payment_tokens=csv(v)})},
+  {key:'transactable',label:'Reserva direta',type:'select',ex:'',options:[{v:'',t:'\u2014'},{v:'sim',t:'Sim'},{v:'nao',t:'Não'}],bind:o=>({get:()=>o.capability.transactable===true?'sim':(o.capability.transactable===false?'nao':''),set:v=>o.capability.transactable=(v==='sim'?true:(v==='nao'?false:null))})}
+];
+function offT(o){return {get:()=>o.offerings[0].title,set:v=>o.offerings[0].title=v||''};}
+function offD(o){return {get:()=>o.offerings[0].detail,set:v=>o.offerings[0].detail=v||''};}
+const EXTRA={
+  hospedagem:[
+    {key:'item',label:'Quarto / oferta',type:'text',ex:'Suíte Luxo',bind:offT},
+    {key:'detail',label:'Detalhe do quarto',type:'text',ex:'Casal, café incluso, 32 m²',bind:offD},
+    {key:'cancel',label:'Cancelamento',type:'text',ex:'Reembolso integral até 48h antes',bind:o=>({get:()=>o.data.cancellation,set:v=>o.data.cancellation=v||null})}
+  ],
+  atrativo:[
+    {key:'item',label:'Ingresso / oferta',type:'text',ex:'Ingresso inteira',bind:offT},
+    {key:'detail',label:'Detalhe do ingresso',type:'text',ex:'Inclui visita guiada',bind:offD},
+    {key:'hours',label:'Horário de funcionamento',type:'text',ex:'Seg a dom, 7h às 14h',bind:o=>({get:()=>o.data.opening_hours,set:v=>o.data.opening_hours=v||null})},
+    {key:'dur',label:'Duração média',type:'text',ex:'2 horas',bind:o=>({get:()=>o.data.duration,set:v=>o.data.duration=v||null})}
+  ],
+  experiencia:[
+    {key:'item',label:'Passeio / oferta',type:'text',ex:'Flutuação 3h',bind:offT},
+    {key:'detail',label:'Detalhe do passeio',type:'text',ex:'Equipamento + guia + trilha',bind:offD},
+    {key:'dur',label:'Duração',type:'text',ex:'3 horas',bind:o=>({get:()=>o.data.duration,set:v=>o.data.duration=v||null})},
+    {key:'meet',label:'Ponto de encontro',type:'text',ex:'Recepção da agência, centro de Jardim',bind:o=>({get:()=>o.data.meeting_point,set:v=>o.data.meeting_point=v||null})}
+  ],
+  ingresso:[
+    {key:'item',label:'Faixa / oferta',type:'text',ex:'Pista',bind:offT},
+    {key:'detail',label:'Detalhe da faixa',type:'text',ex:'Acesso à área principal',bind:offD},
+    {key:'date',label:'Data e horário',type:'text',ex:'30/06/2026, 21h',bind:o=>({get:()=>o.data.start_date,set:v=>o.data.start_date=v||null})},
+    {key:'venue',label:'Local do evento',type:'text',ex:'Balneário Municipal',bind:o=>({get:()=>o.data.venue,set:v=>o.data.venue=v||null})}
+  ],
+  restaurante:[
+    {key:'item',label:'Prato em destaque',type:'text',ex:'Pacu assado',bind:offT},
+    {key:'detail',label:'Detalhe do prato',type:'text',ex:'Peixe regional, serve 2',bind:offD},
+    {key:'cuisine',label:'Tipo de cozinha',type:'csv',ex:'Regional, pantaneira',bind:o=>({get:()=>(o.data.cuisine||[]).join(', '),set:v=>o.data.cuisine=csv(v)})},
+    {key:'hours',label:'Horário',type:'text',ex:'11h às 23h',bind:o=>({get:()=>o.data.opening_hours,set:v=>o.data.opening_hours=v||null})}
+  ]
+};
+function specFor(cat){return COMMON.concat(EXTRA[cat]||[]);}
+function ensureShape(o){o.location=o.location||{};o.geo=o.geo||{};o.price=o.price||{};o.capability=o.capability||{};o.data=o.data||{};o.offerings=o.offerings||[];if(!o.offerings.length)o.offerings.push({title:o.name||'',detail:''});if(o.price.currency==null)o.price.currency='BRL';}
+function fieldsFor(o,cat){ensureShape(o);return specFor(cat).map(s=>{const b=s.bind(o);return {key:s.key,label:s.label,type:s.type,ex:s.ex,options:s.options,get:b.get,set:b.set};});}
+function fieldKeysDoc(cat){return specFor(cat).map(s=>s.key+' = '+s.label.toLowerCase()).join('; ');}
+function fieldEmpty(f){const v=f.get();if(v==null)return true;if(typeof v==='string')return v.trim()==='';if(Array.isArray(v))return v.length===0;return false;}
+
+// ---- realistic example per category: most data exists only as prose, with real gaps left blank ----
+const EXAMPLES={
+ hospedagem:{category:'hospedagem',name:'Pousada Recanto das Águas',entity_type:'Pousada',
+  location:{locality:'Bonito',region:'MS',country:'BR'},geo:{lat:null,lng:null},
+  short_description:'Pousada com piscina natural e café da manhã regional, a 10 minutos do centro de Bonito.',
+  highlights:['café da manhã incluso','piscina natural','Wi-Fi','estacionamento'],
+  offerings:[{title:'Chalé Standard',detail:'Casal, café da manhã incluso, 28 m²'}],
+  price:{from:420,currency:'BRL'},
+  capability:{transactable:null,type:'reserva',payment_tokens:['Pix','cartão de crédito'],merchant_of_record:true},
+  data:{cancellation:null},
+  _cls:{structured:['name'],prose:['locality','region','price','pay','item','detail'],missing:['lat','lng','transactable','cancel']},
+  raw_listing:'A Pousada Recanto das Águas fica em Bonito (MS), a 10 minutos do centro. Diárias a partir de R$ 420 com café da manhã regional incluso. Aceitamos Pix e cartão. Reservas pelo WhatsApp.'},
+ atrativo:{category:'atrativo',name:'Gruta do Lago Azul',entity_type:'Atrativo turístico',
+  location:{locality:'Bonito',region:'MS',country:'BR'},geo:{lat:null,lng:null},
+  short_description:'Caverna com lago de águas azuis cristalinas, um dos cartões-postais de Bonito.',
+  highlights:['monumento natural','visita guiada','trilha de 300 metros'],
+  offerings:[{title:'Ingresso inteira',detail:'Inclui guia credenciado'}],
+  price:{from:95,currency:'BRL'},
+  capability:{transactable:null,type:'ingresso',payment_tokens:[],merchant_of_record:true},
+  data:{opening_hours:'Todos os dias, das 7h às 14h',duration:null},
+  _cls:{structured:['name'],prose:['locality','region','price','item','detail','hours'],missing:['lat','lng','pay','transactable','dur']},
+  raw_listing:'A Gruta do Lago Azul é um monumento natural em Bonito (MS), aberta todos os dias das 7h às 14h. Ingresso a partir de R$ 95 com guia. A visita exige agendamento prévio por uma agência local.'},
+ experiencia:{category:'experiencia',name:'Flutuação no Rio da Prata',entity_type:'Passeio',
+  location:{locality:'Jardim',region:'MS',country:'BR'},geo:{lat:null,lng:null},
+  short_description:'Flutuação guiada em rio de águas transparentes, com nascentes e peixes, em Jardim (MS).',
+  highlights:['equipamento incluso','guia credenciado','almoço opcional'],
+  offerings:[{title:'Flutuação 3h',detail:'Equipamento + guia + trilha ecológica'}],
+  price:{from:290,currency:'BRL'},
+  capability:{transactable:true,type:'reserva',payment_tokens:['Pix','cartão de crédito'],merchant_of_record:true},
+  data:{duration:'3 horas',meeting_point:null},
+  _cls:{structured:['name'],prose:['locality','region','price','pay','transactable','item','detail','dur'],missing:['lat','lng','meet']},
+  raw_listing:'A Flutuação no Rio da Prata, em Jardim (MS), dura cerca de 3 horas e inclui equipamento e guia. Valor a partir de R$ 290. Reservas com pagamento via Pix ou cartão. Recomenda-se chegar com antecedência.'},
+ ingresso:{category:'ingresso',name:'Festival de Inverno de Bonito',entity_type:'Evento',
+  location:{locality:'Bonito',region:'MS',country:'BR'},geo:{lat:null,lng:null},
+  short_description:'Festival de música e gastronomia ao ar livre, com atrações regionais e nacionais.',
+  highlights:['shows ao vivo','praça de alimentação','área kids'],
+  offerings:[{title:'Pista',detail:'Acesso à área principal do festival'}],
+  price:{from:120,currency:'BRL'},
+  capability:{transactable:true,type:'ingresso',payment_tokens:['Pix','cartão de crédito'],merchant_of_record:true},
+  data:{start_date:'25/07/2026, 20h',venue:'Praça da Liberdade, Bonito'},
+  _cls:{structured:['name'],prose:['locality','region','price','pay','transactable','item','detail','date','venue'],missing:['lat','lng']},
+  raw_listing:'O Festival de Inverno de Bonito acontece em 25/07/2026, a partir das 20h, na Praça da Liberdade. Ingressos de pista a partir de R$ 120, com pagamento via Pix ou cartão.'},
+ restaurante:{category:'restaurante',name:'Restaurante Casa do Pantanal',entity_type:'Restaurante',
+  location:{locality:'Campo Grande',region:'MS',country:'BR'},geo:{lat:null,lng:null},
+  short_description:'Cozinha pantaneira com peixes regionais e cortes locais, em ambiente rústico.',
+  highlights:['cozinha regional','ambiente familiar','música ao vivo aos fins de semana'],
+  offerings:[{title:'Pacu assado',detail:'Peixe regional, acompanha arroz e farofa, serve 2'}],
+  price:{from:89,currency:'BRL'},
+  capability:{transactable:null,type:'reserva',payment_tokens:[],merchant_of_record:true},
+  data:{cuisine:['Regional','Pantaneira'],opening_hours:'Terça a domingo, 11h às 23h'},
+  _cls:{structured:['name'],prose:['locality','region','price','item','detail','cuisine','hours'],missing:['lat','lng','pay','transactable']},
+  raw_listing:'O Restaurante Casa do Pantanal, em Campo Grande (MS), serve cozinha pantaneira de terça a domingo, das 11h às 23h. Pratos a partir de R$ 89. Reservas por telefone.'}
+};
+
+const ILLOS={
+ hospedagem:'<svg viewBox="0 0 300 96" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="96" fill="#EAF2EC"/><circle cx="250" cy="26" r="15" fill="#F2B583"/><rect x="34" y="22" width="88" height="58" rx="5" fill="#3E7D82"/><rect x="46" y="32" width="12" height="12" rx="2" fill="#CDEADD"/><rect x="66" y="32" width="12" height="12" rx="2" fill="#CDEADD"/><rect x="86" y="32" width="12" height="12" rx="2" fill="#CDEADD"/><rect x="46" y="52" width="12" height="12" rx="2" fill="#CDEADD"/><rect x="66" y="52" width="12" height="12" rx="2" fill="#9CD4BC"/><rect x="86" y="52" width="12" height="12" rx="2" fill="#CDEADD"/><rect x="138" y="56" width="120" height="24" rx="12" fill="#9CD4BC"/><path d="M146 66 q8 -6 16 0 t16 0 t16 0 t16 0 t16 0" stroke="#EAF2EC" stroke-width="2" fill="none"/><rect x="0" y="80" width="300" height="16" fill="#D9E9E0"/></svg>',
+ atrativo:'<svg viewBox="0 0 300 96" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="96" fill="#EEF3E2"/><circle cx="58" cy="26" r="13" fill="#F2B583"/><path d="M0 80 L72 28 L128 80 Z" fill="#3E7D82"/><path d="M92 80 L162 36 L232 80 Z" fill="#6FBFA0"/><path d="M170 80 L240 26 L300 80 Z" fill="#4E8E93"/><rect x="0" y="80" width="300" height="16" fill="#BFE3D4"/><path d="M0 88 q16 -5 32 0 t32 0 t32 0 t32 0 t32 0 t32 0 t32 0 t32 0 t32 0" stroke="#EEF3E2" stroke-width="2" fill="none"/></svg>',
+ experiencia:'<svg viewBox="0 0 300 96" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="96" fill="#E9F1F2"/><circle cx="252" cy="24" r="13" fill="#F2B583"/><rect x="0" y="58" width="300" height="38" fill="#9CD4BC"/><path d="M118 50 h62 l-12 16 h-38 Z" fill="#3E7D82"/><rect x="146" y="28" width="3" height="22" fill="#3E7D82"/><path d="M149 30 l22 16 h-22 Z" fill="#E8907B"/><path d="M0 70 q18 -6 36 0 t36 0 t36 0 t36 0 t36 0 t36 0 t36 0 t36 0" stroke="#E9F1F2" stroke-width="2" fill="none"/></svg>',
+ ingresso:'<svg viewBox="0 0 300 96" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="96" fill="#FAEAE3"/><rect x="66" y="26" width="168" height="46" rx="8" fill="#3E7D82"/><circle cx="150" cy="26" r="7" fill="#FAEAE3"/><circle cx="150" cy="72" r="7" fill="#FAEAE3"/><line x1="150" y1="33" x2="150" y2="65" stroke="#FAEAE3" stroke-width="2" stroke-dasharray="4 5"/><path d="M104 38 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 Z" fill="#F2B583"/><rect x="170" y="42" width="44" height="5" rx="2.5" fill="#BFE3D4"/><rect x="170" y="52" width="30" height="5" rx="2.5" fill="#9CD4BC"/></svg>',
+ restaurante:'<svg viewBox="0 0 300 96" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="96" fill="#FBF2DF"/><circle cx="150" cy="54" r="30" fill="#3E7D82"/><circle cx="150" cy="54" r="19" fill="#EAF2EC"/><rect x="103" y="34" width="4" height="40" rx="2" fill="#3E7D82"/><rect x="99" y="33" width="3" height="11" rx="1" fill="#3E7D82"/><rect x="108" y="33" width="3" height="11" rx="1" fill="#3E7D82"/><rect x="193" y="34" width="4" height="40" rx="2" fill="#3E7D82"/><path d="M196 34 q-9 3 -9 12 0 7 9 7 Z" fill="#3E7D82"/><path d="M142 28 q7 -8 0 -16" stroke="#E8907B" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M158 28 q7 -8 0 -16" stroke="#F2B583" stroke-width="3" fill="none" stroke-linecap="round"/></svg>'
+};
+function illo(c){return ILLOS[c]||ILLOS.hospedagem;}
+function pinSVG(){return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11Z" stroke="#0E4D54" stroke-width="2"/><circle cx="12" cy="10" r="2.4" fill="#0E4D54"/></svg>';}
+function paySVG(){return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="6" width="18" height="12" rx="2" stroke="#0E4D54" stroke-width="2"/><path d="M3 10h18" stroke="#0E4D54" stroke-width="2"/></svg>';}
+function lockSVG(){return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="11" width="14" height="9" rx="2" stroke="#0E4D54" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="#0E4D54" stroke-width="2"/></svg>';}
+function personSVG(){return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="4" stroke="#0E4D54" stroke-width="2"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="#0E4D54" stroke-width="2"/></svg>';}
+function checkSVG(){return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
+
+function setCat(c){currentCat=c;document.querySelectorAll('.cat').forEach(b=>b.classList.toggle('on',b.dataset.c===c));$('#inpLabel').textContent=CATS[c].inLabel;$('#inp').placeholder=CATS[c].ph;}
+document.querySelectorAll('.cat').forEach(b=>b.addEventListener('click',()=>setCat(b.dataset.c)));
+$('#ex').addEventListener('click',()=>{
+  const ex=EXAMPLES[currentCat]; if(!ex) return;
+  const o=JSON.parse(JSON.stringify(ex));
+  $('#inp').value=o.raw_listing||'';
+  $('#err').style.display='none'; showNotice('');
+  renderObject(o);
+});
+
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+function help(t){return '<span class="help" tabindex="0">?<span class="tip">'+esc(t)+'</span></span>';}
+function titleCase(s){return String(s||'').split(' ').filter(Boolean).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');}
+function prettyPay(p){const m={card:"Cartão",credit_card:"Cartão",debit_card:"Débito",pix:"Pix"};return m[p]||titleCase(String(p).replace(/_/g,' '));}
+function money(pr){pr=pr||{};if(pr.from==null)return null;const sym=(pr.currency==='BRL'||!pr.currency)?'R$':pr.currency;let n;try{n=Number(pr.from).toLocaleString('pt-BR');}catch(e){n=pr.from;}return sym+' '+n;}
+function plural(n,a,b){return n===1?a:b;}
+
+function prepInput(raw){
+  raw=(raw||'').trim();
+  const isUrl=/^https?:\/\//i.test(raw);
+  if(!isUrl) return {text:raw,isUrl:false,hint:null,country:null};
+  const clean=raw.split(/[?#]/)[0];
+  let hint=null,country=null;
+  try{
+    const u=new URL(raw);
+    const m=u.pathname.match(/\/hotel\/([a-z]{2})\/([^\/]+?)(?:\.[a-z-]+)?\.html/i);
+    if(m){country=m[1].toUpperCase();hint=m[2].replace(/[-_]/g,' ').trim();}
+    else{const seg=(u.pathname.split('/').filter(Boolean).pop()||'');hint=seg.replace(/\.(html?|php|aspx)$/i,'').replace(/[-_]/g,' ').trim();if(!hint)hint=u.hostname.replace(/^www\./,'').split('.')[0].replace(/[-_]/g,' ').trim();}
+  }catch(e){}
+  return {text:clean,isUrl:true,hint:hint||null,country};
+}
+function fallbackObj(prep){
+  const name=prep.hint?titleCase(prep.hint):null;
+  return {category:currentCat,name,entity_type:null,location:{locality:null,region:null,country:prep.country||"BR"},geo:{lat:null,lng:null},short_description:null,highlights:[],offerings:[],price:{from:null,currency:"BRL"},capability:{transactable:null,type:null,payment_tokens:[],merchant_of_record:true},data:{},_cls:{structured:[],prose:[],missing:[]},raw_listing:prep.text};
+}
+function schemaFor(cat){
+  return '{\n "category": "'+cat+'",\n "name": string|null,\n "entity_type": string|null,\n "location": {"locality": string|null,"region": string|null,"country": string|null},\n "geo": {"lat": number|null,"lng": number|null},\n "short_description": string|null,\n "highlights": string[],\n "offerings": [{"title": string,"detail": string}],\n "price": {"from": number|null,"currency": "BRL"},\n "capability": {"transactable": boolean|null,"type": string|null,"payment_tokens": string[],"merchant_of_record": true},\n "data": '+CATS[cat].dataShape+',\n "_cls": {"structured": string[], "prose": string[], "missing": string[]},\n "raw_listing": string\n}';
+}
+async function callModel(prep,strict){
+  const cat=currentCat;
+  const ctx = prep.isUrl
+    ? ("A ENTRADA é um LINK de site oficial: "+prep.text+"\n"+(prep.hint?("Nome provável (extraído do link): "+prep.hint+".\n"):"")+(prep.country?("País: "+prep.country+".\n"):"")+"ACESSE e leia o conteúdo público desse site e de suas páginas principais usando busca/leitura na web. Reúna o máximo de informação real e observe SE o site expõe dados estruturados (JSON-LD, microdados, tabelas de especificação) ou apenas texto.")
+    : ("A ENTRADA é uma descrição:\n\"\"\""+prep.text+"\"\"\"");
+  const prompt =
+(strict?"IMPORTANTE: responda SOMENTE com o objeto JSON, sem nenhuma palavra antes ou depois.\n\n":"")+
+"Você é um motor de estruturação de dados para comércio agêntico (UCP). Categoria: "+CATS[cat].label+".\n\n"+
+"TAREFA 1 (valores): preencha o JSON do ESQUEMA com tudo que conseguir extrair da ENTRADA. null quando não houver. 'highlights' = atributos achados (strings curtas). 'offerings' = itens vendáveis ({title, detail}). 'price.from' = menor preço. 'raw_listing' = resumo curto do que foi lido.\n\n"+
+"TAREFA 2 (diagnóstico de ESTRUTURA): para CADA chave abaixo, decida se o SITE expõe esse atributo de forma ESTRUTURADA e legível por máquina. Classifique em três listas dentro de '_cls':\n"+
+"  - structured: o atributo já está em formato estruturado (JSON-LD, microdados, tabela de especificações, campo dedicado).\n"+
+"  - prose: a informação existe, mas só como texto corrido, descrição ou marketing, fora de um formato.\n"+
+"  - missing: não aparece em lugar nenhum no conteúdo.\n"+
+"Seja RIGOROSO e realista: a esmagadora maioria dos sites de turismo NÃO possui dados estruturados. Só use 'structured' se houver marcação ou estrutura real. Na dúvida entre structured e prose, escolha prose.\n"+
+"CHAVES a classificar (cada uma em exatamente UMA lista): "+fieldKeysDoc(cat)+".\n"+
+"Preencha os VALORES no ESQUEMA para chaves 'structured' e 'prose'; deixe null as 'missing'.\n\n"+
+"REGRAS: responda APENAS com JSON válido. Sem markdown, sem cercas, sem comentários. NUNCA responda com texto explicativo. Se faltar dado, retorne o JSON assim mesmo.\n\n"+
+"ESQUEMA:\n"+schemaFor(cat)+"\n\n"+ctx;
+  const res = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1600,messages:[{role:"user",content:prompt}],tools:[{type:"web_search_20250305",name:"web_search"}]})
+  });
+  if(!res.ok) throw new Error("status "+res.status);
+  const data=await res.json();
+  const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+  return extractJson(text);
+}
+function extractJson(t){
+  if(!t) return null;
+  t=t.replace(/```json/gi,'').replace(/```/g,'');
+  const a=t.indexOf('{'),b=t.lastIndexOf('}');
+  if(a<0||b<0) return null;
+  try{return JSON.parse(t.slice(a,b+1));}catch(e){return null;}
+}
+function prune(v){
+  if(Array.isArray(v)){const a=v.map(prune).filter(x=>x!=null);return a.length?a:undefined;}
+  if(v&&typeof v==='object'){const o={};for(const k in v){const p=prune(v[k]);if(p!=null)o[k]=p;}return Object.keys(o).length?o:undefined;}
+  return (v==null||v==='')?undefined:v;
+}
+function feat(n){return {"@type":"LocationFeatureSpecification","name":n,"value":true};}
+function buildLd(o){
+  const cat=o.category||currentCat, ld=CATS[cat].ld, loc=o.location||{}, d=o.data||{}, pr=o.price||{};
+  const J={"@context":"https://schema.org","@type":ld,"name":o.name||null};
+  if(o.short_description) J.description=o.short_description;
+  J.address={"@type":"PostalAddress","addressLocality":loc.locality||null,"addressRegion":loc.region||null,"addressCountry":loc.country||"BR"};
+  if(o.geo&&(o.geo.lat!=null||o.geo.lng!=null)) J.geo={"@type":"GeoCoordinates","latitude":o.geo.lat,"longitude":o.geo.lng};
+  if(o.highlights&&o.highlights.length) J.amenityFeature=o.highlights.map(feat);
+  if(cat==='hospedagem'){
+    if(d.rooms&&d.rooms.length){const rooms=d.rooms.map(r=>{const hr={"@type":"HotelRoom","name":r.name||null};if(r.max_occupancy!=null)hr.occupancy={"@type":"QuantitativeValue","maxValue":r.max_occupancy};if(r.bed)hr.bed={"@type":"BedDetails","typeOfBed":r.bed};return hr;});J.containsPlace=rooms.length>1?rooms:rooms[0];}
+    else if(o.offerings&&o.offerings[0]&&o.offerings[0].title) J.containsPlace={"@type":"HotelRoom","name":o.offerings[0].title};
+    if(pr.from!=null) J.makesOffer={"@type":"Offer","priceCurrency":pr.currency||"BRL","price":String(pr.from),"availability":"https://schema.org/InStock"};
+    if(d.cancellation && J.makesOffer) J.makesOffer.cancellationPolicy=d.cancellation;
+  } else if(cat==='restaurante'){
+    if(d.cuisine&&d.cuisine.length) J.servesCuisine=d.cuisine;
+    if(d.price_range) J.priceRange=d.price_range;
+    if(d.opening_hours) J.openingHours=d.opening_hours;
+    if(d.accepts_reservations!=null) J.acceptsReservations=d.accepts_reservations;
+    if(d.menu&&d.menu.length) J.hasMenu={"@type":"Menu","hasMenuItem":d.menu.map(mi=>({"@type":"MenuItem","name":mi.name||null,"offers":(mi.price!=null?{"@type":"Offer","price":String(mi.price),"priceCurrency":pr.currency||"BRL"}:undefined)}))};
+    else if(o.offerings&&o.offerings[0]&&o.offerings[0].title) J.hasMenu={"@type":"Menu","hasMenuItem":[{"@type":"MenuItem","name":o.offerings[0].title,"offers":(pr.from!=null?{"@type":"Offer","price":String(pr.from),"priceCurrency":pr.currency||"BRL"}:undefined)}]};
+  } else if(cat==='ingresso'){
+    if(d.event_name) J.name=d.event_name;
+    if(d.start_date) J.startDate=d.start_date;
+    J.location={"@type":"Place","name":d.venue||null,"address":J.address}; delete J.address;
+    const tiers=d.tiers||[];
+    if(tiers.length) J.offers=tiers.map(t=>({"@type":"Offer","name":t.name||null,"price":t.price!=null?String(t.price):null,"priceCurrency":pr.currency||"BRL","availability":"https://schema.org/InStock"}));
+    else if(pr.from!=null) J.offers={"@type":"Offer","price":String(pr.from),"priceCurrency":pr.currency||"BRL","availability":"https://schema.org/InStock"};
+  } else if(cat==='experiencia'){
+    if(pr.from!=null) J.offers={"@type":"Offer","price":String(pr.from),"priceCurrency":pr.currency||"BRL","availability":"https://schema.org/InStock"};
+    if(d.languages&&d.languages.length) J.inLanguage=d.languages;
+  } else if(cat==='atrativo'){
+    if(d.opening_hours) J.openingHours=d.opening_hours;
+    J.publicAccess=true;
+    if(d.ticket&&d.ticket.required===false) J.isAccessibleForFree=true;
+  }
+  return prune(J);
+}
+function buildTx(o){
+  const cat=o.category||currentCat, pr=o.price||{}, cap=o.capability||{};
+  const amt=pr.from!=null?Math.round(pr.from*100):null;
+  const item=(o.offerings&&o.offerings[0])||{title:o.name||"Item"};
+  const pm=(cap.payment_tokens&&cap.payment_tokens.length)?cap.payment_tokens:["card","pix"];
+  return {ucp:{version:"2026-01"},id:"chk_exemplo_001",status:"ready_for_complete",currency:pr.currency||"BRL",
+    buyer:{email:"[ CLIENTE ]",first_name:"[ NOME ]",last_name:"[ SOBRENOME ]"},
+    line_items:[{id:"li_1",item:{id:"item_1",title:item.title||null,price:amt},quantity:1}],
+    totals:[{type:"total",amount:amt}],merchant_of_record:o.name||"[ FORNECEDOR ]",
+    payment:{protocol:"AP2",methods:pm},fulfillment:{type:CATS[cat].txType}};
+}
+function domainFrom(o){const slug=(o.name||'exemplo').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'').slice(0,22)||'exemplo';return 'https://'+slug+'.com.br';}
+function buildOAuth(o){
+  const d=domainFrom(o);
+  return {issuer:d,authorization_endpoint:d+'/oauth/authorize',token_endpoint:d+'/oauth/token',revocation_endpoint:d+'/oauth/revoke',
+    scopes_supported:['dev.ucp.shopping.checkout','dev.ucp.orders.read'],response_types_supported:['code'],
+    grant_types_supported:['authorization_code','refresh_token'],token_endpoint_auth_methods_supported:['client_secret_basic'],service_documentation:d+'/docs/ucp'};
+}
+function buildOrder(o){
+  const cat=o.category||currentCat, pr=o.price||{}, loc=o.location||{}, cap=o.capability||{};
+  const amt=pr.from!=null?Math.round(pr.from*100):null;
+  const item=(o.offerings&&o.offerings[0])||{title:o.name||"Item"};
+  return {ucp:{version:"2026-01"},id:"order_123456789",checkout_id:"chk_exemplo_001",status:"confirmed",currency:pr.currency||"BRL",
+    line_items:[{id:"li_1",item:{id:"item_1",title:item.title||null,price:amt},quantity:1}],
+    totals:[{type:"total",amount:amt}],merchant_of_record:o.name||"[ FORNECEDOR ]",
+    payment:{protocol:"AP2",methods:(cap.payment_tokens&&cap.payment_tokens.length)?cap.payment_tokens:["card","pix"]},
+    fulfillment:{type:CATS[cat].txType,destination:{address_locality:loc.locality||null,address_region:loc.region||null,address_country:loc.country||"BR"},fulfillable_on:"now"},
+    events:[{id:"evt_1",occurred_at:"2026-06-30T10:30:00Z",type:"confirmed"}]};
+}
+
+function diagnostic(pct,ok,loose,miss,total,cat){
+  const q=CATS[cat].q; let h='';
+  h+='<p><b>O site está cerca de '+pct+'% estruturado para um agente de IA.</b> A barra não mede se a informação existe, e sim quanto dela está em formato legível por máquina. Hoje, dos '+total+' campos críticos: <b>'+ok+'</b> '+plural(ok,'estruturado','estruturados')+', <b>'+loose+'</b> só no texto (fora do formato) e <b>'+miss+'</b> '+plural(miss,'faltando','faltando')+'.</p>';
+  if(loose>0) h+='<p><b>Fora do formato:</b> esses dados estão no site, mas como texto corrido. Um humano lê, um agente não extrai com confiança. É o trabalho mais barato de resolver, porque a informação já existe e só falta estruturar.</p>';
+  if(miss>0) h+='<p><b>Faltando:</b> o agente não encontra esses dados em lugar nenhum. Sem eles, ele não consegue '+q.act+' e tende a pular para um concorrente que está pronto. Cada lacuna é uma venda direta que escapa.</p>';
+  h+='<p><b>Encontrabilidade:</b> quando alguém pergunta a uma IA '+q.ask+', o modelo responde com o que consegue ler e confiar. Sem esses atributos estruturados, você não entra na resposta. Não é aparecer mal posicionado, é ficar invisível para quem já decidiu comprar.</p>';
+  return h;
+}
+
+function wrapPhone(o,body,foot,check){
+  const top='<div class="ptop"><div class="pbar"><span>9:30</span><span class="pr"><span class="sig"></span><span class="wifi"></span><span class="batt"></span></span></div><div class="phead"><span class="pbrand">'+esc(o.name||'App')+'</span>'+(check?'<span class="pcheck">'+checkSVG()+'</span>':'<span class="px">&times;</span>')+'</div></div>';
+  const f=foot?('<div class="pfoot">'+foot+'</div>'):'';
+  return '<div class="phone"><div class="pscreen">'+top+'<div class="pbody">'+body+'</div>'+f+'</div></div>';
+}
+function phoneProduct(o){
+  const cat=o.category||currentCat, loc=o.location||{}, pr=o.price||{}, cap=o.capability||{};
+  const priceStr=money(pr), locStr=[loc.locality,loc.region].filter(Boolean).join(', ')||'Localização a definir';
+  const tag=(cap.merchant_of_record!==false)?'<span class="ptag">venda direta</span>':'';
+  let b='<div class="pbanner">'+illo(cat)+'</div><div class="ppad">';
+  b+='<div class="pprodname">'+esc(o.name||'Sem nome')+'</div>';
+  b+='<div class="pprodmeta">'+esc([o.entity_type,locStr].filter(Boolean).join(' · '))+'</div>';
+  b+='<div class="pprodprice">'+(priceStr?esc(priceStr):'Preço a definir')+' '+tag+'</div>';
+  if(o.highlights&&o.highlights.length) b+='<div class="pchips">'+o.highlights.slice(0,6).map(h=>'<span class="pchip">'+esc(h)+'</span>').join('')+'</div>';
+  if(o.offerings&&o.offerings.length){b+='<div class="psub">Ofertas</div>';o.offerings.forEach(of=>{if(of.title||of.detail)b+='<div class="poffrow"><span class="poffttl">'+esc(of.title||'Item')+'</span><span class="poffdet">'+esc(of.detail||'')+'</span></div>';});}
+  b+='</div>';
+  return wrapPhone(o,b,'<button class="pcta">'+MOCK[cat].prodCta+'</button>',false);
+}
+function phoneCheckout(o){
+  const cat=o.category||currentCat, loc=o.location||{}, pr=o.price||{}, cap=o.capability||{};
+  const off=(o.offerings&&o.offerings[0])||{title:o.name||'Item',detail:''};
+  const priceStr=money(pr), locStr=[loc.locality,loc.region].filter(Boolean).join(', ')||'a definir';
+  const payStr=(cap.payment_tokens&&cap.payment_tokens.length)?cap.payment_tokens.map(prettyPay).join(' · '):'Pix · Cartão';
+  const detail=off.detail||((o.highlights&&o.highlights.length)?o.highlights.slice(0,3).join(' · '):'Detalhes a definir');
+  const tag=(cap.merchant_of_record!==false)?'<span class="ptag">venda direta</span>':'';
+  let b='<div class="ptitle">'+MOCK[cat].coTitle+'</div>';
+  b+='<div class="pcard"><div class="pbanner">'+illo(cat)+'</div><div class="poff"><div class="poffname">'+esc(off.title||'Item')+'</div><div class="poffprice">'+(priceStr?esc(priceStr):'a definir')+' '+tag+'</div><div class="poffdetail">'+esc(detail)+'</div></div></div>';
+  b+='<div class="prow"><span class="pic">'+pinSVG()+'</span><span class="pt"><b>'+esc(o.name||'Local')+'</b><span>'+esc(locStr)+'</span></span></div>';
+  b+='<div class="prow"><span class="pic">'+paySVG()+'</span><span class="pt"><b>Pagamento</b><span>'+esc(payStr)+'</span></span></div>';
+  b+='<div class="ptotal"><span>Total</span><span>'+(priceStr?esc(priceStr):'\u2014')+'</span></div>';
+  const foot='<button class="pcta">'+MOCK[cat].coCta+'</button><div class="pfine">Você fecha direto com '+esc(o.name||'o fornecedor')+'. Ele é o Merchant of Record e mantém os dados. Pagamento via AP2.</div>';
+  return wrapPhone(o,b,foot,false);
+}
+function phoneIdentity(o){
+  let b='<div class="pid"><div class="pidicon">'+lockSVG()+'</div>';
+  b+='<div class="pidttl">Vincular sua conta</div>';
+  b+='<div class="pidsub">Sua conta no '+esc(o.name||'fornecedor')+' usará este acesso seguro, sem compartilhar senha.</div>';
+  b+='<div class="pidmail">'+personSVG()+'<span>cliente@email.com</span></div>';
+  b+='<div class="pidbox"><div class="pidboxh">O fornecedor poderá:</div>';
+  ['Ver seu histórico e programa de fidelidade','Gerenciar suas reservas','Gerenciar atividades pós-compra'].forEach(t=>{b+='<div class="pidrow">'+esc(t)+'</div>';});
+  b+='</div><div class="pidfine">Revise os termos e a política de privacidade para entender como seus dados são tratados.</div></div>';
+  return wrapPhone(o,b,'<button class="pcta">Continuar</button>',false);
+}
+function phoneOrder(o){
+  const cat=o.category||currentCat, loc=o.location||{}, pr=o.price||{}, cap=o.capability||{};
+  const off=(o.offerings&&o.offerings[0])||{title:o.name||'Item',detail:''};
+  const priceStr=money(pr)||'\u2014';
+  const payStr=(cap.payment_tokens&&cap.payment_tokens.length)?cap.payment_tokens.map(prettyPay).join(' · '):'Pix · Cartão';
+  const locStr=[loc.locality,loc.region].filter(Boolean).join(', ')||'a definir';
+  let b='<div class="pordhead"><div class="pordcheck">'+checkSVG()+'</div><div class="pordttl">'+MOCK[cat].ordTitle+'</div><div class="pordid">Pedido nº SLW7MB</div></div>';
+  b+='<div class="psub">Resumo</div>';
+  b+='<div class="poffrow"><span class="poffttl">'+esc(off.title||'Item')+'</span><span class="poffdet">'+esc(priceStr)+'</span></div>';
+  b+='<div class="pordline"><span>Total</span><span>'+esc(priceStr)+'</span></div>';
+  b+='<div class="pordline sub2"><span>Pagamento</span><span>'+esc(payStr)+'</span></div>';
+  b+='<div class="psub">Informações</div>';
+  b+='<div class="prow"><span class="pic">'+pinSVG()+'</span><span class="pt"><b>'+esc(o.name||'Local')+'</b><span>'+esc(locStr)+'</span></span></div>';
+  b+='<div class="pordnote">Confirmação enviada. O fornecedor é o Merchant of Record e cuida do atendimento e do pós-venda.</div>';
+  return wrapPhone(o,b,'',true);
+}
+const SCREENS=[
+  {k:'produto',phone:phoneProduct,json:buildLd,lbl:'JSON-LD · Schema.org (produto/catálogo)',wrap:true},
+  {k:'checkout',phone:phoneCheckout,json:buildTx,lbl:'Checkout UCP · pagamento via AP2'},
+  {k:'identificacao',phone:phoneIdentity,json:buildOAuth,lbl:'OAuth 2.0 · /.well-known/oauth-authorization-server'},
+  {k:'pedido',phone:phoneOrder,json:buildOrder,lbl:'Pedido UCP · fulfillment e eventos'}
+];
+
+function captureVal(f){
+  const v=f.get();
+  if(f.type==='select') return {val:(v||''),disp:(v==='sim'?'Sim':(v==='nao'?'Não':String(v)))};
+  if(f.type==='num') return {val:String(v),disp:(f.key==='price'?('R$ '+Number(v).toLocaleString('pt-BR')):String(v))};
+  return {val:String(v),disp:String(v)};
+}
+function initStatus(o){
+  const cls=o._cls||{}; const S=cls.structured||[];
+  STATE.loose={}; const st={};
+  STATE.fields.forEach(f=>{
+    const k=f.key;
+    if(fieldEmpty(f)) st[k]='missing';
+    else if(S.indexOf(k)>=0) st[k]='ok';
+    else { STATE.loose[k]=captureVal(f); f.set(''); st[k]='loose'; }
+  });
+  STATE.status=st;
+}
+function buildForm(){
+  const F=STATE.fields, st=STATE.status, host=$('#editBody'); host.innerHTML='';
+  F.forEach(f=>{
+    const wrap=document.createElement('div'); wrap.className='field s-'+(st[f.key]||'missing'); wrap.dataset.k=f.key;
+    const lab=document.createElement('label'); lab.textContent=f.label; wrap.appendChild(lab);
+    let inp;
+    if(f.type==='select'){inp=document.createElement('select');(f.options||[]).forEach(op=>{const o2=document.createElement('option');o2.value=op.v;o2.textContent=op.t;inp.appendChild(o2);});inp.value=f.get()||'';}
+    else{inp=document.createElement('input');inp.type='text';if(f.type==='num')inp.inputMode='decimal';inp.placeholder=f.ex||'';const v=f.get();inp.value=(v==null)?'':v;}
+    const ev=(f.type==='select')?'change':'input';
+    inp.addEventListener(ev,()=>{f.set(inp.value);st[f.key]=fieldEmpty(f)?'missing':'ok';wrap.className='field s-'+st[f.key];refresh();});
+    wrap.appendChild(inp); host.appendChild(wrap);
+  });
+}
+function renderLoose(){
+  const host=$('#looseWrap'); const keys=Object.keys(STATE.loose||{});
+  if(!keys.length){host.style.display='none';host.innerHTML='';return;}
+  host.style.display='block';
+  let h='<div class="loosehd">Detectado, mas fora do formato · clique para estruturar</div><div class="dchips">';
+  keys.forEach(k=>{
+    const f=STATE.fields.find(x=>x.key===k); if(!f) return;
+    const used=STATE.status[k]==='ok';
+    h+='<button class="dchip'+(used?' used':'')+'" data-k="'+esc(k)+'"'+(used?' disabled':'')+'>'+(used?'\u2713 ':'')+esc(f.label)+': '+esc(STATE.loose[k].disp)+'</button>';
+  });
+  h+='</div>';
+  host.innerHTML=h;
+  host.querySelectorAll('.dchip').forEach(b=>{ if(!b.disabled) b.addEventListener('click',()=>applyLoose(b.dataset.k)); });
+}
+function applyLoose(k){
+  if(STATE.status[k]==='ok') return;
+  const f=STATE.fields.find(x=>x.key===k); if(!f||!STATE.loose[k]) return;
+  f.set(STATE.loose[k].val);
+  STATE.status[k]= fieldEmpty(f)?'missing':'ok';
+  buildForm();
+  refresh();
+}
+function renderScreen(){
+  const o=STATE.o, sc=SCREENS.find(s=>s.k===STATE.screen)||SCREENS[0];
+  document.querySelectorAll('#tabs4 .tab').forEach(t=>t.classList.toggle('on',t.dataset.t===sc.k));
+  $('#phoneWrap').innerHTML=sc.phone(o);
+  const js=JSON.stringify(sc.json(o),null,2);
+  $('#code').textContent= sc.wrap? ('<script type="application/ld+json">\n'+js+'\n<\/script>') : js;
+  $('#codeLbl').textContent=sc.lbl;
+}
+function renderOrigin(){
+  const o=STATE.o;
+  $('#originBox').innerHTML='<div class="originhd">Texto de origem · como a máquina lê hoje'+help('É o conteúdo que a IA consegue ler do seu site hoje, em texto corrido. É a partir daqui que ela tenta extrair e estruturar os dados. Quanto mais solto o texto, menos ela aproveita.')+'</div><div class="origintxt">'+esc(o.raw_listing||'(sem texto de origem)')+'</div>';
+}
+function renderAttrs(){
+  const o=STATE.o; let d='<div class="sub">Atributos detectados'+help('São os atributos que a IA reconheceu no conteúdo do site, como comodidades e características. Vêm da leitura do texto de origem, e ajudam a descrever o item, mas não substituem os campos estruturados que a barra mede.')+'</div>';
+  if(o.highlights&&o.highlights.length) d+='<div class="chipset">'+o.highlights.map(k=>'<span class="chip k">'+esc(k)+'</span>').join('')+'</div>';
+  else d+='<div style="font-size:13px;color:var(--muted)">Nenhum atributo descritivo foi detectado no conteúdo.</div>';
+  $('#detailBody').innerHTML=d;
+}
+function refresh(){
+  const F=STATE.fields, st=STATE.status;
+  let ok=0,loose=0,miss=0;
+  F.forEach(f=>{const s=st[f.key]; if(s==='ok')ok++; else if(s==='loose')loose++; else miss++;});
+  const total=F.length||1, pct=Math.round(ok/total*100);
+  $('#pct').textContent=pct+'%';
+  $('#fm').textContent=ok+' estruturados · '+loose+' fora do formato · '+miss+' faltando';
+  const col=pct<50?'var(--coral)':(pct<80?'var(--amber)':'#46A982');
+  const bf=$('#barfill'); bf.style.background=col; bf.style.width=pct+'%';
+  $('#diag').innerHTML=diagnostic(pct,ok,loose,miss,total,STATE.cat);
+  renderLoose();
+  renderOrigin();
+  renderAttrs();
+  renderScreen();
+}
+function renderObject(o){
+  if(!o.category) o.category=currentCat;
+  STATE.o=o; STATE.cat=o.category; STATE.fields=fieldsFor(o,o.category); initStatus(o); STATE.screen='produto';
+  buildForm(); refresh();
+  const r=$('#results'); r.style.display='block'; r.classList.add('show');
+  r.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+document.querySelectorAll('#tabs4 .tab').forEach(t=>t.addEventListener('click',()=>{STATE.screen=t.dataset.t;renderScreen();}));
+$('#copyBtn').addEventListener('click',async()=>{const b=$('#copyBtn');try{await navigator.clipboard.writeText($('#code').textContent);const o=b.textContent;b.textContent='Copiado';setTimeout(()=>b.textContent=o,1400);}catch(e){}});
+document.addEventListener('click',e=>{
+  const h=e.target.closest('.help');
+  document.querySelectorAll('.help.show').forEach(el=>{if(el!==h)el.classList.remove('show');});
+  if(h){e.stopPropagation();h.classList.toggle('show');}
+});
+
+function showNotice(msg){const n=$('#notice');if(!msg){n.style.display='none';return;}n.textContent=msg;n.style.display='block';}
+$('#go').addEventListener('click',async()=>{
+  const input=$('#inp').value.trim();
+  const err=$('#err'); err.style.display='none'; showNotice('');
+  if(!input){ err.textContent="Cole o link do site oficial (ou a descrição) para começar."; err.style.display='block'; return; }
+  const btn=$('#go'); const orig=btn.textContent;
+  const isUrl=/^https?:/i.test(input);
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>'+(isUrl?'Acessando o site e avaliando a estrutura...':'Estruturando com IA...');
+  const prep=prepInput(input);
+  try{
+    let o=await callModel(prep,false);
+    if(!o) o=await callModel(prep,true);
+    if(!o){o=fallbackObj(prep);showNotice("Não consegui ler os dados automaticamente desse endereço (alguns sites bloqueiam a leitura). Montei o esqueleto a partir do link. Preencha os campos abaixo para ver a simulação ganhar forma.");}
+    if(!o.category) o.category=currentCat;
+    renderObject(o);
+  }catch(e){
+    err.innerHTML="O serviço de IA não respondeu agora. Tente de novo em alguns segundos. Se persistir, cole a descrição em vez do link.";
+    err.style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent=orig;
+  }
+});
+</script>
+</body>
+</html>
