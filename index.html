@@ -194,8 +194,9 @@
   .antesquote b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#a0573a;margin-bottom:5px;font-weight:700}
   .foot{font-size:12px;color:var(--muted);margin-top:24px;line-height:1.5;border-top:1px solid var(--border);padding-top:14px}
   .foot a{color:var(--petroleo)}
-  #stickyGauge{position:fixed;bottom:0;left:0;right:0;z-index:200;display:flex;align-items:center;gap:16px;background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -3px 18px rgba(20,60,60,.10);padding:10px 24px 12px;transform:translateY(100%);transition:transform .3s ease;pointer-events:none}
+  #stickyGauge{position:fixed;bottom:0;left:0;right:0;z-index:200;display:flex;background:var(--surface);border-top:1px solid var(--border);box-shadow:0 -3px 18px rgba(20,60,60,.10);padding:10px 20px 12px;transform:translateY(100%);transition:transform .3s ease;pointer-events:none}
   #stickyGauge.visible{transform:translateY(0);pointer-events:auto}
+  .sg-inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:16px;width:100%}
   .sg-pct{font-family:var(--display);font-weight:700;font-size:22px;flex:none;min-width:52px;transition:color .3s}
   .sg-track{flex:1;min-width:0}
   .sg-bar{height:5px;border-radius:999px;background:var(--surface2);overflow:hidden;margin-bottom:5px}
@@ -281,6 +282,7 @@
       <div class="diag" id="diag"></div>
       <div class="rightcol">
         <div class="origin" id="originBox"></div>
+        <div id="gaugeSentinel" style="height:1px;visibility:hidden;pointer-events:none;margin-bottom:-1px"></div>
         <div class="gauge">
           <div class="top">
             <div><span class="pct" id="pct">0%</span> <span class="lbl">estruturado para a IA ler</span><span class="help" tabindex="0">?<span class="tip">Mede quanto dos dados críticos do negócio está em formato que uma IA lê com segurança (estruturado), e não se a informação existe. Verde conta; fora do formato e falta não contam até serem estruturados.</span></span></div>
@@ -327,15 +329,17 @@
 </div>
 
 <div id="stickyGauge" aria-hidden="true">
-  <span class="sg-pct" id="sgPct">0%</span>
-  <div class="sg-track">
-    <div class="sg-bar"><i id="sgFill" style="width:0%"></i></div>
-    <div class="sg-lbl" id="sgLbl">estruturado para a IA ler</div>
-  </div>
-  <div class="sg-legend">
-    <span class="lg"><i class="d ok"></i>estruturado</span>
-    <span class="lg"><i class="d lo"></i>fora do formato</span>
-    <span class="lg"><i class="d mi"></i>falta</span>
+  <div class="sg-inner">
+    <span class="sg-pct" id="sgPct">0%</span>
+    <div class="sg-track">
+      <div class="sg-bar"><i id="sgFill" style="width:0%"></i></div>
+      <div class="sg-lbl" id="sgLbl">estruturado para a IA ler</div>
+    </div>
+    <div class="sg-legend">
+      <span class="lg"><i class="d ok"></i>estruturado</span>
+      <span class="lg"><i class="d lo"></i>fora do formato</span>
+      <span class="lg"><i class="d mi"></i>falta</span>
+    </div>
   </div>
 </div>
 
@@ -831,7 +835,7 @@ document.addEventListener('click',e=>{
 
 function showNotice(msg){const n=$('#notice');if(!msg){n.style.display='none';return;}n.textContent=msg;n.style.display='block';}
 (function(){
-  const gaugeEl=document.querySelector('.gauge');
+  const gaugeEl=document.getElementById('gaugeSentinel');
   const stickyEl=document.getElementById('stickyGauge');
   if(!gaugeEl||!stickyEl) return;
   new IntersectionObserver(function(entries){
